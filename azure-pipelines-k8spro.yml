@@ -1,5 +1,17 @@
 trigger:
-- main
+  branches:
+    include:
+      - main
+  paths:
+    exclude:
+      - .github
+pr:
+  branches:
+    include:
+      - main
+  paths:
+    exclude:
+      - .github
 
 resources:
 - repo: self
@@ -56,6 +68,8 @@ stages:
 
 - stage: Push
   displayName: Push stage
+  condition: ne(variables['Build.Reason'], 'PullRequest')
+  dependsOn: Build
   jobs:   
   - job: Push
     displayName: Push
@@ -79,7 +93,7 @@ stages:
 
 - stage: Deploy
   displayName: Deploy stage
-  dependsOn: Build
+  dependsOn: Push
 
   jobs:
   - deployment: Deploy
