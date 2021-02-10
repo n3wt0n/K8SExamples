@@ -84,6 +84,19 @@ jobs:
           name: manifests
           path: ${{ github.workspace }}/k8s 
       
+      - name: Login to Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }
+      
+      - name: Login to AKS
+        uses: azure/aks-set-context@v1
+        with:
+            creds: '${{ secrets.AZURE_CREDENTIALS }}'
+            resource-group: 'K8S_Examples'
+            cluster-name: 'K8S_Examples_cluster'
+        id: login
+      
       - name: Create secret in AKS
         uses: Azure/k8s-create-secret@v1.1
         with:
@@ -91,7 +104,7 @@ jobs:
           container-registry-username: n3wt0n
           container-registry-password: ${{ secrets.CR_PAT }}
           secret-type: docker-registry
-          secret-name: $IMAGEPULLSECRET_NAME
+          secret-name: $IMAGEPULLSECRET_NAME          
     
       - name: Deploy to AKS
         uses: Azure/k8s-deploy@v1.3
