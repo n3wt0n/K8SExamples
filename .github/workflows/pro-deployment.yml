@@ -1,0 +1,98 @@
+name: Pro Deployment
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+env:
+  IMAGE_NAME: sampleapp
+  DOCKERFILE: app/Dockerfile 
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Build image
+        run: docker build . --file $DOCKERFILE --tag $IMAGE_NAME:${{ github.run_id }}
+      
+      - name: Save image as Tar
+        run: docker save --output ${{ format('{0}/{1}.tar', github.workspace, env.IMAGE_NAME) }} $IMAGE_NAME:${{ github.run_id }}
+      
+      - name: Publish image
+        uses: actions/upload-artifact@v2.2.2
+        with:
+          name: containerImage
+          path: ${{ format('{0}/{1}.tar', github.workspace, env.IMAGE_NAME) }}
+          if-no-files-found: error
+
+  # Push image to GitHub Container Registry.
+  push:
+    needs: build
+
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+
+    steps:
+      - uses: actions/checkout@v2   
+      
+      - name: Download the image
+        uses: actions/download-artifact@v2.0.8
+        with:
+          name: containerImage
+          path: ${{ github.workspace }} 
+      
+      - name: Load the image from Tar
+        run: docker load --input ${{ format('{0}/{1}.tar', github.workspace, env.IMAGE_NAME) }}
+    
+      - name: Log into registry
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login docker.pkg.github.com -u ${{ github.actor }} --password-stdin
+
+      - name: Push image
+        run: |
+          IMAGE_ID=ghcr.io/${{ github.repository_owner }}/$IMAGE_NAME
+
+          # Change all uppercase to lowercase
+          IMAGE_ID=$(echo $IMAGE_ID | tr '[A-Z]' '[a-z]')
+
+          # Strip git ref prefix from version
+          VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
+
+          # Strip "v" prefix from tag name
+          [[ "${{ github.ref }}" == "refs/tags/"* ]] && VERSION=$(echo $VERSION | sed -e 's/^v//')
+
+          # Use Docker `latest` tag convention
+          [ "$VERSION" == "$default-branch" ] && VERSION=latest
+
+          echo IMAGE_ID=$IMAGE_ID
+          echo VERSION=$VERSION
+
+          docker tag $IMAGE_NAME $IMAGE_ID:$VERSION
+          docker tag $IMAGE_NAME $IMAGE_NAME:${{ github.run_id }}
+          docker push $IMAGE_ID:$VERSION
+
+      - name: Publish Manifests
+        uses: actions/upload-artifact@v2.2.2
+        with:
+          name: manifests
+          path: kubernetes
+          if-no-files-found: error
+          
+  deploy:
+    needs: [push]      
+    runs-on: ubuntu-latest
+    environment: 
+      name: Production
+    steps:
+      - name: Download the manifests
+        uses: actions/download-artifact@v2.0.8
+        with:
+          name: manifests
+          path: ${{ github.workspace }} 
+          
+      - name: Deploy to AKS
+        run: echo CIAO
