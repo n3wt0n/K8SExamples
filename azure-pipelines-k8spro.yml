@@ -59,7 +59,7 @@ stages:
   #      dockerfile: $(dockerfilePath)
   #      tags: '$(tag)'
     
-    - upload: image.tar
+    - upload: containerImage.tar
       artifact: image
 
     - upload: kubernetes
