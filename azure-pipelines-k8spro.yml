@@ -1,0 +1,112 @@
+trigger:
+- main
+
+resources:
+- repo: self
+
+variables:
+  dockerRegistryServiceConnection: 'ea08fcbe-dafb-4a38-8d0f-1095dbaa578a'
+  imageRepository: 'sampleapp'
+  containerRegistry: 'k8sexamplesacr.azurecr.io'
+  dockerfilePath: 'app/Dockerfile'
+  tag: '$(Build.BuildId)'
+  imagePullSecret: 'k8sexamplesacrd741-auth'
+  vmImageName: 'ubuntu-latest'
+
+stages:
+- stage: Build
+  displayName: Build stage
+  jobs:  
+  - job: Build
+    displayName: Build
+    pool:
+      vmImage: $(vmImageName)
+    steps:
+    - task: Docker@2
+      displayName: Build the Container Image
+      inputs:
+        containerRegistry: '$(dockerRegistryServiceConnection)'
+        repository: '$(imageRepository)'
+        command: 'build'
+        dockerfile: $(dockerfilePath)
+        tags: '$(tag)'
+    
+    - task: Docker@2
+      displayName: 'Save image to TAR'
+      inputs:
+        repository: '$(imageRepository)'
+        command: save
+        arguments: '--output containerImage.tar $(imageRepository):$(Build.BuildId)'
+        addPipelineData: false
+        
+    - task: Docker@2
+      displayName: Build the Container Image
+      inputs:
+        containerRegistry: '$(dockerRegistryServiceConnection)'
+        repository: '$(imageRepository)'
+        command: 'build'
+        dockerfile: $(dockerfilePath)
+        tags: '$(tag)'
+    
+    - upload: image.tar
+      artifact: image
+
+    - upload: kubernetes
+      artifact: manifests
+
+- stage: Push
+  displayName: Push stage
+  jobs:   
+  - job: Push
+    displayName: Push
+    pool:
+      vmImage: $(vmImageName)
+    steps:
+    
+    - task: Docker@2
+      displayName: 'Load Image from Tar'
+      inputs:
+        command: load
+        arguments: '--input image/containerImage.tar'
+
+    - task: Docker@2
+      displayName: Push the Image to Container Registry
+      inputs:
+        containerRegistry: '$(dockerRegistryServiceConnection)'
+        repository: '$(imageRepository)'
+        command: 'push'
+        tags: '$(tag)'
+
+- stage: Deploy
+  displayName: Deploy stage
+  dependsOn: Build
+
+  jobs:
+  - deployment: Deploy
+    displayName: Deploy
+    pool:
+      vmImage: $(vmImageName)
+    environment: 'n3wt0nK8SExamples.default'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - task: KubernetesManifest@0
+            displayName: Create imagePullSecret
+            inputs:
+              action: createSecret
+              secretName: $(imagePullSecret)
+              dockerRegistryEndpoint: $(dockerRegistryServiceConnection)
+              
+          - task: KubernetesManifest@0
+            displayName: Deploy to Kubernetes cluster
+            inputs:
+              action: deploy
+              manifests: |
+                $(Pipeline.Workspace)/manifests/deployment.yml
+                $(Pipeline.Workspace)/manifests/service.yml
+              imagePullSecrets: |
+                $(imagePullSecret)
+              containers: |
+                $(containerRegistry)/$(imageRepository):$(tag)
+
