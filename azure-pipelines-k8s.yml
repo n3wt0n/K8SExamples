@@ -5,18 +5,13 @@ resources:
 - repo: self
 
 variables:
-
-  # Container registry service connection established during pipeline creation
   dockerRegistryServiceConnection: 'ea08fcbe-dafb-4a38-8d0f-1095dbaa578a'
   imageRepository: 'sampleapp'
   containerRegistry: 'k8sexamplesacr.azurecr.io'
   dockerfilePath: '**/Dockerfile'
   tag: '$(Build.BuildId)'
   imagePullSecret: 'k8sexamplesacrd741-auth'
-
-  # Agent VM image name
   vmImageName: 'ubuntu-latest'
-  
 
 stages:
 - stage: Build
@@ -37,7 +32,7 @@ stages:
         tags: |
           $(tag)
           
-    - upload: manifests
+    - upload: kubernetes
       artifact: manifests
 
 - stage: Deploy
@@ -66,8 +61,8 @@ stages:
             inputs:
               action: deploy
               manifests: |
-                $(Pipeline.Workspace)/manifests/deployment.yml
-                $(Pipeline.Workspace)/manifests/service.yml
+                $(Pipeline.Workspace)/kubernetes/deployment.yml
+                $(Pipeline.Workspace)/kubernetes/service.yml
               imagePullSecrets: |
                 $(imagePullSecret)
               containers: |
