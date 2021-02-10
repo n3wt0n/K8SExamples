@@ -51,7 +51,7 @@ stages:
         addPipelineData: false
     
     - upload: containerImage.tar
-      artifact: 
+      artifact: image
       displayName: Publish Artifact - Image
 
     - upload: kubernetes
