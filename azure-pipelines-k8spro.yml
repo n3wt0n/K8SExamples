@@ -61,9 +61,11 @@ stages:
     
     - upload: containerImage.tar
       artifact: image
+      displayName: Publish Artifact - Image
 
     - upload: kubernetes
       artifact: manifests
+      displayName: Publish Artifact - k8s manifests
 
 - stage: Push
   displayName: Push stage
@@ -80,13 +82,13 @@ stages:
       displayName: 'Load Image from Tar'
       inputs:
         command: load
-        arguments: '--input image/containerImage.tar'
+        arguments: '--input $(Pipeline.Workspace)/image/containerImage.tar'
 
     - task: Docker@2
       displayName: 'ReTag Image with ACR Name - BuildId'
       inputs:
         containerRegistry: '$(dockerRegistryServiceConnection)'
-        epository: '$(imageRepository)'
+        repository: '$(imageRepository)'
         command: tag
         arguments: '$(imageRepository):$(Build.BuildId) $(containerRegistry)/$(imageRepository):$(Build.BuildId)' 
 
