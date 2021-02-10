@@ -8,7 +8,8 @@ on:
 
 env:
   IMAGE_NAME: sampleapp
-  DOCKERFILE: app/Dockerfile 
+  DOCKERFILE: app/Dockerfile
+  IMAGEPULLSECRET_NAME: ghcrsecret
 
 jobs:
   build:
@@ -69,7 +70,8 @@ jobs:
           name: manifests
           path: kubernetes
           if-no-files-found: error
-          
+
+  # Deploy to AKS
   deploy:
     needs: [push]      
     runs-on: ubuntu-latest
@@ -80,7 +82,21 @@ jobs:
         uses: actions/download-artifact@v2.0.8
         with:
           name: manifests
-          path: ${{ github.workspace }} 
-          
+          path: ${{ github.workspace }}/k8s 
+      
+      - name: Create secret in AKS
+        uses: Azure/k8s-create-secret@v1.1
+        with:
+          container-registry-url: https://ghcr.io
+          container-registry-username: n3wt0n
+          container-registry-password: ${{ secrets.CR_PAT }}
+          secret-type: docker-registry
+          secret-name: $IMAGEPULLSECRET_NAME
+    
       - name: Deploy to AKS
-        run: echo CIAO
+        uses: Azure/k8s-deploy@v1.3
+        with:
+          manifests: ${{ github.workspace }}/k8s
+          images: ghcr.io/${{ github.repository_owner }}/$IMAGE_NAME:${{ github.run_id }}
+          imagepullsecrets: $IMAGEPULLSECRET_NAME          
+          action: deploy
