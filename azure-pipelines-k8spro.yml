@@ -23,7 +23,6 @@ variables:
   dockerfilePath: 'app/Dockerfile'
   tag: '$(Build.BuildId)'
   imagePullSecret: 'k8sexamplesacrd741-auth'
-  vmImageName: 'ubuntu-latest'
 
 stages:
 - stage: Build
@@ -49,18 +48,9 @@ stages:
         command: save
         arguments: '--output containerImage.tar $(imageRepository):$(Build.BuildId)'
         addPipelineData: false
-        
-  #  - task: Docker@2
-  #    displayName: Build the Container Image
-  #    inputs:
-  #      containerRegistry: '$(dockerRegistryServiceConnection)'
-  #      repository: '$(imageRepository)'
-  #      command: 'build'
-  #      dockerfile: $(dockerfilePath)
-  #      tags: '$(tag)'
     
     - upload: containerImage.tar
-      artifact: image
+      artifact: 
       displayName: Publish Artifact - Image
 
     - upload: kubernetes
@@ -78,11 +68,17 @@ stages:
       vmImage: $(vmImageName)
     steps:
     
+    - task: DownloadPipelineArtifact@2
+      inputs:
+        buildType: 'current'
+        artifactName: 'image'
+        targetPath: '$(Pipeline.Workspace)'
+
     - task: Docker@2
       displayName: 'Load Image from Tar'
       inputs:
         command: load
-        arguments: '--input $(Pipeline.Workspace)/image/containerImage.tar'
+        arguments: '--input $(Pipeline.Workspace)/containerImage.tar'
 
     - task: Docker@2
       displayName: 'ReTag Image with ACR Name - BuildId'
