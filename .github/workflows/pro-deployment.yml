@@ -47,10 +47,11 @@ jobs:
           path: ${{ github.workspace }} 
       
       - name: Load the image from Tar
+        # Create a PAT with `read:packages` and `write:packages` scopes and save it as an Actions secret `CR_PAT`
         run: docker load --input ${{ format('{0}/{1}.tar', github.workspace, env.IMAGE_NAME) }}
     
       - name: Log into registry
-        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login docker.pkg.github.com -u ${{ github.actor }} --password-stdin
+        run: echo "${{ secrets.CR_PAT }}" | docker login https://ghcr.io -u ${{ github.actor }} --password-stdin
 
       - name: Push image
         run: |
