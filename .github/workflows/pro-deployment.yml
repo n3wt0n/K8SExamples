@@ -8,14 +8,11 @@ on:
 
 env:
   IMAGE_NAME: sampleapp
-  DOCKERFILE: Dockerfile 
+  DOCKERFILE: app/Dockerfile 
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: /app
 
     steps:
       - uses: actions/checkout@v2
