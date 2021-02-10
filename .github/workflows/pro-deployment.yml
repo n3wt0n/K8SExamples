@@ -8,7 +8,7 @@ on:
 
 env:
   IMAGE_NAME: sampleapp
-  DOCKERFILE: app/Dockerfile 
+  DOCKERFILE: Dockerfile 
 
 jobs:
   build:
