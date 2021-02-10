@@ -23,6 +23,7 @@ variables:
   dockerfilePath: 'app/Dockerfile'
   tag: '$(Build.BuildId)'
   imagePullSecret: 'k8sexamplesacrd741-auth'
+  vmImageName: 'ubuntu-latest'
 
 stages:
 - stage: Build
