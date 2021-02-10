@@ -61,8 +61,8 @@ stages:
             inputs:
               action: deploy
               manifests: |
-                $(Pipeline.Workspace)/kubernetes/deployment.yml
-                $(Pipeline.Workspace)/kubernetes/service.yml
+                $(Pipeline.Workspace)/deployment.yml
+                $(Pipeline.Workspace)/service.yml
               imagePullSecrets: |
                 $(imagePullSecret)
               containers: |
