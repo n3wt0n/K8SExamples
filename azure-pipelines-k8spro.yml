@@ -37,7 +37,6 @@ stages:
     - task: Docker@2
       displayName: Build the Container Image
       inputs:
-        containerRegistry: '$(dockerRegistryServiceConnection)'
         repository: '$(imageRepository)'
         command: 'build'
         dockerfile: $(dockerfilePath)
@@ -51,14 +50,14 @@ stages:
         arguments: '--output containerImage.tar $(imageRepository):$(Build.BuildId)'
         addPipelineData: false
         
-    - task: Docker@2
-      displayName: Build the Container Image
-      inputs:
-        containerRegistry: '$(dockerRegistryServiceConnection)'
-        repository: '$(imageRepository)'
-        command: 'build'
-        dockerfile: $(dockerfilePath)
-        tags: '$(tag)'
+  #  - task: Docker@2
+  #    displayName: Build the Container Image
+  #    inputs:
+  #      containerRegistry: '$(dockerRegistryServiceConnection)'
+  #      repository: '$(imageRepository)'
+  #      command: 'build'
+  #      dockerfile: $(dockerfilePath)
+  #      tags: '$(tag)'
     
     - upload: image.tar
       artifact: image
@@ -82,6 +81,14 @@ stages:
       inputs:
         command: load
         arguments: '--input image/containerImage.tar'
+
+    - task: Docker@2
+      displayName: 'ReTag Image with ACR Name - BuildId'
+      inputs:
+        containerRegistry: '$(dockerRegistryServiceConnection)'
+        epository: '$(imageRepository)'
+        command: tag
+        arguments: '$(imageRepository):$(Build.BuildId) $(containerRegistry)/$(imageRepository):$(Build.BuildId)' 
 
     - task: Docker@2
       displayName: Push the Image to Container Registry
