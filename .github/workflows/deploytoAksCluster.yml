@@ -1,0 +1,50 @@
+on: [push]
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@master
+    
+    - uses: azure/docker-login@v1
+      with:
+        login-server: k8sexamplesacr.azurecr.io
+        username: ${{ secrets.acr_k8sexamplesacr_username }}
+        password: ${{ secrets.acr_k8sexamplesacr_password }}
+    
+    - name: Build and push image to ACR
+      id: build-image
+      run: |
+        docker build "$GITHUB_WORKSPACE/app" -f  "app/Dockerfile" -t k8sexamplesacr.azurecr.io/k8sexamplescluster:${{ github.sha }} --label dockerfile-path=app/Dockerfile
+        docker push k8sexamplesacr.azurecr.io/k8sexamplescluster:${{ github.sha }}
+    
+    - uses: azure/k8s-set-context@v1
+      with:
+         kubeconfig: ${{ secrets.aks_k8sexamplescluster_kubeConfig }}
+      id: login
+    
+    - name: Create namespace
+      run: |
+        namespacePresent=`kubectl get namespace | grep k8s_examples_clusterab40 | wc -l`
+        if [ $namespacePresent -eq 0 ]
+        then
+            echo `kubectl create namespace k8s_examples_clusterab40`
+        fi
+
+    - uses: azure/k8s-create-secret@v1
+      with:
+        namespace: k8s_examples_clusterab40
+        container-registry-url: k8sexamplesacr.azurecr.io
+        container-registry-username: ${{ secrets.acr_k8sexamplesacr_username }}
+        container-registry-password: ${{ secrets.acr_k8sexamplesacr_password }}
+        secret-name: k8sexamplescdockerauth
+       
+    - uses: azure/k8s-deploy@v1.2
+      with:
+        namespace: k8s_examples_clusterab40
+        manifests: |
+          manifests/deployment.yml
+          manifests/service.yml
+        images: |
+          k8sexamplesacr.azurecr.io/k8sexamplescluster:${{ github.sha }}
+        imagepullsecrets: |
+          k8sexamplescdockerauth
